@@ -1,0 +1,51 @@
+{
+  "name": "agent-skills-manager",
+  "title": "Agent Skills Manager",
+  "version": "1.0.0",
+  "description": "Manage agent skills across multiple AI coding assistants",
+  "icon": "icon.png",
+  "author": "krishnak",
+  "license": "MIT",
+  "platforms": ["macOS"],
+  "categories": ["Developer Tools", "Productivity"],
+  "keywords": [
+    "raycast",
+    "agent-skills",
+    "skills",
+    "ai",
+    "coding-assistant"
+  ],
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ray dev",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@raycast/api": "^1.80.0",
+    "simple-git": "^3.22.0",
+    "gray-matter": "^4.0.3",
+    "picocolors": "^1.0.1",
+    "xdg-basedir": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "commands": [
+    {
+      "name": "index",
+      "title": "Browse Skills",
+      "description": "Search and install skills from skills.sh",
+      "mode": "view",
+      "keywords": ["skills", "install", "browse"]
+    },
+    {
+      "name": "list-installed",
+      "title": "Installed Skills",
+      "description": "View and manage installed skills",
+      "mode": "view",
+      "keywords": ["installed", "list", "manage"]
+    }
+  ]
+}
