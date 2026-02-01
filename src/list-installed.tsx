@@ -291,10 +291,12 @@ export default function ListInstalled() {
       }
 
       // Install to each agent
+      const cwd = process.cwd();
       const results = await Promise.all(
         skill.agents.map(async (agentType) => {
           const result = await installSkillForAgent(skillToInstall, agentType, {
             global: skill.scope === 'global',
+            cwd: skill.scope === 'project' ? cwd : undefined,
             mode: installMode,
           });
           return { agentType, result };
@@ -311,13 +313,18 @@ export default function ListInstalled() {
       const sanitizedName = sanitizeName(skill.name);
       const gitCommitHash = await getLatestCommitHash(tempDir);
       if (!gitCommitHash) {
-        throw new Error('Failed to get commit hash from repository');
+        // Warn but don't fail - reinstallation can proceed without commit hash
+        showToast({
+          style: Toast.Style.Failure,
+          title: 'Warning',
+          message: 'Could not retrieve commit hash. Update detection may not work.',
+        });
       }
       await addSkillToLock(sanitizedName, {
         source: skill.sourceUrl,
         sourceType: 'github',
         sourceUrl: skill.sourceUrl,
-        gitCommitHash,
+        gitCommitHash: gitCommitHash || undefined,
       });
 
       showToast({

@@ -51,5 +51,13 @@
       "mode": "view",
       "keywords": ["installed", "list", "manage"]
     }
+  ],
+  "screenshots": [
+    "metadata/browse-skills.png",
+    "metadata/skills-metadata.png",
+    "metadata/select-agent.png",
+    "metadata/select-install-type.png",
+    "metadata/installation-summary.png",
+    "metadata/installed-skills.png"
   ]
 }

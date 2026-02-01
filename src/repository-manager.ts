@@ -94,9 +94,33 @@ export async function cleanupTempDir(dir: string): Promise<void> {
 export async function getLatestCommitHash(repoPath: string, ref: string = 'HEAD'): Promise<string | null> {
   try {
     const git = simpleGit(repoPath);
-    const log = await git.log({ from: ref, maxCount: 1 });
-    return log.latest?.hash || null;
-  } catch {
+    
+    // First, try to get the commit hash using revparse (most reliable)
+    try {
+      const hash = await git.revparse([ref]);
+      const trimmedHash = hash.trim();
+      if (trimmedHash && trimmedHash.length > 0) {
+        return trimmedHash;
+      }
+    } catch (revparseError) {
+      // Continue to fallback method
+    }
+    
+    // Fallback to log method
+    const log = await git.log({ maxCount: 1 });
+    if (log.latest?.hash) {
+      return log.latest.hash;
+    }
+    
+    // If log doesn't work, try getting all commits and take the first one
+    const allLogs = await git.log();
+    if (allLogs.latest?.hash) {
+      return allLogs.latest.hash;
+    }
+    
+    return null;
+  } catch (error) {
+    // Return null if all methods fail
     return null;
   }
 }

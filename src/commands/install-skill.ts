@@ -73,7 +73,7 @@ export async function installSkill(skill: Skill | string, isUpdate = false): Pro
       selectedAgents = Array.from(combined) as AgentType[];
     }
 
-    // For MVP, default to global scope and symlink mode
+    // Always use global scope (project-level installation disabled)
     const scope = 'global';
     const mode: InstallMode = 'symlink';
 
@@ -107,44 +107,63 @@ export async function installSkill(skill: Skill | string, isUpdate = false): Pro
         throw new Error(`Skill "${skillName}" not found`);
       }
 
-      // Install to each agent
+      // Install to each agent (always global - project-level disabled)
       const results = await Promise.all(
         selectedAgents.map(async (agentType) => {
           const result = await installSkillForAgent(skillToInstall, agentType, {
-            global: scope === 'global',
+            global: true,
             mode,
           });
           return { agentType, result };
         })
       );
 
+      const successful = results.filter(r => r.result.success);
       const failed = results.filter(r => !r.result.success);
+
       if (failed.length > 0) {
-        const failedAgents = failed.map(f => getAgentConfig(f.agentType).displayName).join(', ');
-        throw new Error(`Failed to install to: ${failedAgents}`);
+        const failedDetails = failed.map(f => {
+          const agentName = getAgentConfig(f.agentType).displayName;
+          const errorMsg = f.result.error || 'Unknown error';
+          return `${agentName}: ${errorMsg}`;
+        }).join('\n');
+
+        const errorMessage = failed.length === selectedAgents.length
+          ? `Failed to install to all agents:\n${failedDetails}`
+          : `Failed to install to ${failed.length} agent(s):\n${failedDetails}`;
+
+        throw new Error(errorMessage);
       }
 
-      // Save to lock file
-      const sanitizedName = sanitizeName(skillName);
-      const gitCommitHash = await getLatestCommitHash(tempDir);
-      if (!gitCommitHash) {
-        throw new Error('Failed to get commit hash from repository');
+      // Save to lock file (only if at least one installation succeeded)
+      if (successful.length > 0) {
+        const sanitizedName = sanitizeName(skillName);
+        const gitCommitHash = await getLatestCommitHash(tempDir);
+        if (!gitCommitHash) {
+          // Warn but don't fail - installation can proceed without commit hash
+          await showToast({
+            style: Toast.Style.Failure,
+            title: 'Warning',
+            message: 'Could not retrieve commit hash. Update detection may not work.',
+          });
+        }
+        await addSkillToLock(sanitizedName, {
+          source: typeof skill === 'object' && skill.repositoryUrl ? skill.repositoryUrl : sourceUrl,
+          sourceType: 'github',
+          sourceUrl: typeof skill === 'object' && skill.repositoryUrl ? skill.repositoryUrl : sourceUrl,
+          gitCommitHash: gitCommitHash || undefined,
+        });
+
+        // Save selected agents (only successful ones)
+        const successfulAgents = successful.map(r => r.agentType);
+        await saveSelectedAgents(successfulAgents);
+
+        await showToast({
+          style: Toast.Style.Success,
+          title: isUpdate ? 'Skill updated' : 'Skill installed',
+          message: `Installed to ${successful.length} agent(s)`,
+        });
       }
-      await addSkillToLock(sanitizedName, {
-        source: typeof skill === 'object' && skill.repositoryUrl ? skill.repositoryUrl : sourceUrl,
-        sourceType: 'github',
-        sourceUrl: typeof skill === 'object' && skill.repositoryUrl ? skill.repositoryUrl : sourceUrl,
-        gitCommitHash,
-      });
-
-      // Save selected agents
-      await saveSelectedAgents(selectedAgents);
-
-      await showToast({
-        style: Toast.Style.Success,
-        title: isUpdate ? 'Skill updated' : 'Skill installed',
-        message: `Installed to ${selectedAgents.length} agent(s)`,
-      });
     } finally {
       if (tempDir) {
         await cleanupTempDir(tempDir).catch(() => {});

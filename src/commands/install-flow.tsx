@@ -31,7 +31,7 @@ interface InstallFlowState {
   discoveredSkills: DiscoveredSkill[];
   selectedSkills: DiscoveredSkill[];
   selectedAgents: AgentType[];
-  scope: 'global' | 'project';
+  scope: 'global'; // Project-level installation disabled
   method: InstallMode;
   tempDir?: string;
   isInstalling: boolean;
@@ -143,14 +143,16 @@ export function InstallFlow({ sourceUrl, skillName, onComplete }: { sourceUrl: s
     setState(prev => ({
       ...prev,
       selectedAgents: agents,
-      step: 'scope-selection',
+      scope: 'global', // Always use global installation
+      step: 'method-selection', // Skip scope selection, go directly to method selection
     }));
   }
 
   function handleScopeSelection(scope: 'global' | 'project') {
+    // Disabled - project-level installation not supported
     setState(prev => ({
       ...prev,
-      scope,
+      scope: 'global', // Force global
       step: 'method-selection',
     }));
   }
@@ -184,42 +186,65 @@ export function InstallFlow({ sourceUrl, skillName, onComplete }: { sourceUrl: s
 
     try {
       const skill = selectedSkills[0]; // Handle single skill for now
+      // Always use global installation (project-level disabled)
       const results = await Promise.all(
         selectedAgents.map(async (agentType) => {
           const result = await installSkillForAgent(skill, agentType, {
-            global: scope === 'global',
+            global: true,
             mode: method,
           });
           return { agentType, result };
         })
       );
 
+      const successful = results.filter(r => r.result.success);
       const failed = results.filter(r => !r.result.success);
+
+      // Show detailed error messages for failed installations
       if (failed.length > 0) {
-        throw new Error(`Failed to install to ${failed.length} agent(s)`);
+        const failedDetails = failed.map(f => {
+          const agentName = getAgentConfig(f.agentType).displayName;
+          const errorMsg = f.result.error || 'Unknown error';
+          return `${agentName}: ${errorMsg}`;
+        }).join('\n');
+
+        const errorMessage = failed.length === selectedAgents.length
+          ? `Failed to install to all agents:\n${failedDetails}`
+          : `Failed to install to ${failed.length} agent(s):\n${failedDetails}`;
+
+        throw new Error(errorMessage);
       }
 
-      // Save to lock file
-      const sanitizedName = sanitizeName(skill.name);
-      const gitCommitHash = await getLatestCommitHash(tempDir);
-      if (!gitCommitHash) {
-        throw new Error('Failed to get commit hash from repository');
+      // Save to lock file (only if at least one installation succeeded)
+      if (successful.length > 0) {
+        const sanitizedName = sanitizeName(skill.name);
+        const gitCommitHash = await getLatestCommitHash(tempDir);
+        if (!gitCommitHash) {
+          // Warn but don't fail - installation can proceed without commit hash
+          // Update detection won't work, but the skill can still be installed
+          showToast({
+            style: Toast.Style.Failure,
+            title: 'Warning',
+            message: 'Could not retrieve commit hash. Update detection may not work.',
+          });
+        }
+        await addSkillToLock(sanitizedName, {
+          source: sourceUrl,
+          sourceType: 'github',
+          sourceUrl: sourceUrl,
+          gitCommitHash: gitCommitHash || undefined,
+        });
+
+        // Save selected agents (only successful ones)
+        const successfulAgents = successful.map(r => r.agentType);
+        await saveSelectedAgents(successfulAgents);
+
+        showToast({
+          style: Toast.Style.Success,
+          title: 'Skill installed',
+          message: `Installed to ${successful.length} agent(s)`,
+        });
       }
-      await addSkillToLock(sanitizedName, {
-        source: sourceUrl,
-        sourceType: 'github',
-        sourceUrl: sourceUrl,
-        gitCommitHash,
-      });
-
-      // Save selected agents
-      await saveSelectedAgents(selectedAgents);
-
-      showToast({
-        style: Toast.Style.Success,
-        title: 'Skill installed',
-        message: `Installed to ${selectedAgents.length} agent(s)`,
-      });
 
       // Reset installation state before calling onComplete
       setState(prev => ({ ...prev, isInstalling: false, step: 'summary' }));
@@ -436,35 +461,10 @@ export function InstallFlow({ sourceUrl, skillName, onComplete }: { sourceUrl: s
       );
     }
 
-    // Step: Scope selection
-    if (step === 'scope-selection') {
-      return (
-        <List>
-          <List.Section title="Installation scope">
-            <List.Item
-              title="Global"
-              subtitle="Install in home directory (available across all projects)"
-              accessories={scope === 'global' ? [{ icon: Icon.CheckCircle }] : []}
-              actions={
-                <ActionPanel>
-                  <Action title="Select Global" onAction={() => handleScopeSelection('global')} />
-                </ActionPanel>
-              }
-            />
-            <List.Item
-              title="Project"
-              subtitle="Install in current directory (committed with project)"
-              accessories={scope === 'project' ? [{ icon: Icon.CheckCircle }] : []}
-              actions={
-                <ActionPanel>
-                  <Action title="Select Project" onAction={() => handleScopeSelection('project')} />
-                </ActionPanel>
-              }
-            />
-          </List.Section>
-        </List>
-      );
-    }
+    // Step: Scope selection - DISABLED (project-level installation not supported)
+    // if (step === 'scope-selection') {
+    //   // Skipped - always use global installation
+    // }
 
     // Step: Method selection
     if (step === 'method-selection') {
@@ -511,7 +511,7 @@ export function InstallFlow({ sourceUrl, skillName, onComplete }: { sourceUrl: s
         `**Skill:** ${skill.name}`,
         `**Path:** \`${displayPath}\``,
         `**Method:** ${method === 'symlink' ? 'Symlink' : 'Copy'}`,
-        `**Scope:** ${scope === 'global' ? 'Global' : 'Project'}`,
+        `**Scope:** Global`,
         `**Agents:** ${selectedAgents.map(a => getAgentConfig(a).displayName).join(', ')}`,
         '',
         method === 'symlink'
