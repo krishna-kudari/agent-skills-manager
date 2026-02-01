@@ -1,25 +1,25 @@
 # Agent Skills Manager
 
-A Raycast extension for managing agent skills across multiple AI coding assistants (Cursor, Continue, Cline, and 40+ others).
+A Raycast extension for managing agent skills across multiple AI coding assistants (Cursor, Continue, Cline, and 40+ others). Browse, install, update, and manage skills from skills.sh or GitHub repositories—all from Raycast.
 
 ## Features
 
-- **Browse Skills**: Search and browse skills from the skills.sh catalog
-- **Install Skills**: Install skills from skills.sh or GitHub repositories
-- **Multi-Agent Support**: Install skills to multiple agents simultaneously
-- **Manage Installed Skills**: View, update, and delete installed skills
-- **Update Detection**: Git-based update detection using commit hash comparison
-- **Flexible Installation**: Choose between symlink or copy installation modes
-- **Scope Management**: Install skills globally or per-project
+- 🗂️ **Browse Skills** - Search and browse skills from the skills.sh catalog
+- 📦 **Install Skills** - Install skills from skills.sh or GitHub repositories
+- 🔄 **Multi-Agent Support** - Install skills to multiple agents simultaneously
+- 📋 **Manage Installed Skills** - View, update, and delete installed skills
+- 🔍 **Update Detection** - Git-based update detection using commit hash comparison
+- ⚙️ **Flexible Installation** - Choose between symlink or copy installation modes
+- 📁 **Scope Management** - Install skills globally or per-project
+- 🎯 **Auto-Discovery** - Automatically discover skills in GitHub repositories
 
 ## Installation
 
-### From Raycast Store
-1. Open Raycast
-2. Search for "Agent Skills Manager"
-3. Click "Install"
+1. Install the extension from the [Raycast Store](https://raycast.com) or build from source
+2. No configuration required—the extension automatically detects installed agents
 
 ### Manual Installation
+
 1. Clone this repository
 2. Install dependencies: `npm install`
 3. Build: `npm run build`
@@ -29,24 +29,30 @@ A Raycast extension for managing agent skills across multiple AI coding assistan
 ## Usage
 
 ### Browse Skills
-- Search for skills from the skills.sh catalog
-- View install counts and descriptions
-- See install status (Installed / Update Available / Not Installed)
-- Click to install or update skills
+
+1. Open Raycast (`Cmd + Space`)
+2. Type "Browse Skills" or "Agent Skills"
+3. Search for skills from the skills.sh catalog
+4. View install counts and descriptions
+5. See install status (Installed / Update Available / Not Installed)
+6. Click to install or update skills
 
 ### Install from GitHub
-- Use the "Browse Skills" command
-- Enter a GitHub repository URL when prompted
-- Extension will discover skills in the repository
-- Select agents and installation mode (symlink or copy)
-- Choose scope (global or project)
+
+1. Open Raycast and search for "Browse Skills"
+2. Enter a GitHub repository URL when prompted
+3. Extension will automatically discover skills in the repository
+4. Select agents and installation mode (symlink or copy)
+5. Choose scope (global or project)
 
 ### Installed Skills
-- View all installed skills across all agents
-- See which agents have each skill installed
-- Check for updates (Git commit hash comparison)
-- Reinstall skills to update to latest version
-- Delete skills from specific agents or all agents
+
+1. Open Raycast and search for "Installed Skills"
+2. View all installed skills across all agents
+3. See which agents have each skill installed
+4. Check for updates (Git commit hash comparison)
+5. Reinstall skills to update to latest version
+6. Delete skills from specific agents or all agents
 
 ## Supported Agents
 
@@ -66,21 +72,53 @@ The extension uses Git commit hash comparison to detect updates:
 2. On update check, the extension compares the stored hash with the latest commit hash from the remote repository
 3. If hashes differ, an update is available
 
+## Screenshots
+
+Add screenshots to showcase your extension. Place them in the `metadata` folder at the root of your extension directory.
+
+**Screenshot Requirements:**
+- Size: 2000 x 1250 pixels (16:10 aspect ratio)
+- Format: PNG
+- Maximum: 6 screenshots (recommended: at least 3)
+- Place files in: `metadata/` folder
+
+**Screenshots:**
+1. `metadata/browse-skills.png` - Browse skills view
+2. `metadata/skills-metadata.png` - Skill details view
+3. `metadata/select-agent.png` - Agent selection
+4. `metadata/select-install-type.png` - Installation options
+5. `metadata/installation-summary.png` - Installation summary
+6. `metadata/installed-skills.png` - Installed skills view
+
 ## Development
+
+### Prerequisites
+
+- Node.js 16+
+- Raycast app (macOS or Windows)
+- Git (for cloning repositories)
+
+### Setup
 
 ```bash
 # Install dependencies
 npm install
 
-# Build
+# Build extension
 npm run build
 
-# Type check
-npm run type-check
-
-# Development mode (with hot reload)
+# Run in development mode
 npm run dev
 ```
+
+### Available Scripts
+
+- `npm run build` - Build extension for production
+- `npm run dev` - Start development mode with hot reload
+- `npm run lint` - Lint code
+- `npm run fix-lint` - Fix linting issues automatically
+- `npm run type-check` - Type check without building
+- `npm run publish` - Publish to Raycast Store
 
 ## Architecture
 
@@ -98,7 +136,7 @@ npm run dev
 ## Requirements
 
 - macOS or Windows (Raycast for Windows is in beta)
-- Node.js 18+ (for development)
+- Node.js 16+ (for development)
 - Git (for cloning repositories)
 
 ## Platform Support
@@ -112,7 +150,3 @@ Note: Some agent-specific paths may differ between platforms, but the extension 
 ## License
 
 MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.

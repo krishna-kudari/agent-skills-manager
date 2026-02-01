@@ -90,7 +90,7 @@ export function InstallFlow({ sourceUrl, skillName, onComplete }: { sourceUrl: s
         try {
           const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
           if (response.ok) {
-            const data = await response.json();
+            const data = (await response.json()) as { description?: string };
             description = data.description || undefined;
           }
         } catch {
