@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Detail, ActionPanel, Action, Icon, showToast, Toast, List, popToRoot } from '@raycast/api';
 import { homedir } from 'os';
 import { detectInstalledAgents, getAllAgents, getAgentConfig } from '../agents';
-import { cloneRepository, discoverSkills, cleanupTempDir, GitCloneError } from '../repository-manager';
+import { cloneRepository, discoverSkills, cleanupTempDir, GitCloneError, getLatestCommitHash } from '../repository-manager';
 import { installSkillForAgent, sanitizeName, getCanonicalPath } from '../installer';
-import { addSkillToLock, getLastSelectedAgents, saveSelectedAgents, computeContentHash } from '../skill-registry';
+import { addSkillToLock, getLastSelectedAgents, saveSelectedAgents } from '../skill-registry';
 import type { AgentType, InstallMode } from '../types';
 import type { DiscoveredSkill } from '../repository-manager';
 
@@ -201,12 +201,15 @@ export function InstallFlow({ sourceUrl, skillName, onComplete }: { sourceUrl: s
 
       // Save to lock file
       const sanitizedName = sanitizeName(skill.name);
-      const contentHash = computeContentHash(skill.rawContent);
+      const gitCommitHash = await getLatestCommitHash(tempDir);
+      if (!gitCommitHash) {
+        throw new Error('Failed to get commit hash from repository');
+      }
       await addSkillToLock(sanitizedName, {
         source: sourceUrl,
         sourceType: 'github',
         sourceUrl: sourceUrl,
-        skillFolderHash: contentHash,
+        gitCommitHash,
       });
 
       // Save selected agents

@@ -1,4 +1,4 @@
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { xdgConfig } from 'xdg-basedir';
@@ -8,6 +8,7 @@ const home = homedir();
 const configHome = xdgConfig ?? join(home, '.config');
 const codexHome = process.env.CODEX_HOME?.trim() || join(home, '.codex');
 const claudeHome = process.env.CLAUDE_CONFIG_DIR?.trim() || join(home, '.claude');
+const isWindows = platform() === 'win32';
 
 export const agents: Record<AgentType, AgentConfig> = {
   amp: {
@@ -89,7 +90,10 @@ export const agents: Record<AgentType, AgentConfig> = {
     skillsDir: '.codex/skills',
     globalSkillsDir: join(codexHome, 'skills'),
     detectInstalled: async () => {
-      return existsSync(codexHome) || existsSync('/etc/codex');
+      if (existsSync(codexHome)) return true;
+      // Check system-wide location (Linux/macOS only)
+      if (!isWindows && existsSync('/etc/codex')) return true;
+      return false;
     },
   },
   'command-code': {

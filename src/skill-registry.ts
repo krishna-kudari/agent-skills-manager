@@ -16,7 +16,8 @@ export interface SkillLockEntry {
   sourceType: string;
   sourceUrl: string;
   skillPath?: string;
-  skillFolderHash: string;
+  skillFolderHash?: string; // Deprecated, kept for backward compatibility
+  gitCommitHash?: string; // Git commit hash of the installed version
   installedAt: string;
   updatedAt: string;
 }
@@ -80,7 +81,8 @@ export async function addSkillToLock(
     sourceType: string;
     sourceUrl: string;
     skillPath?: string;
-    skillFolderHash: string;
+    skillFolderHash?: string; // Deprecated, kept for backward compatibility
+    gitCommitHash?: string; // Git commit hash of the installed version
   }
 ): Promise<void> {
   const lock = await readSkillLock();

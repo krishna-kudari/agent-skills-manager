@@ -1,9 +1,8 @@
 import { showToast, Toast, confirmAlert, Alert, popToRoot } from '@raycast/api';
 import { detectInstalledAgents, getAllAgents, getAgentConfig } from '../agents';
-import { cloneRepository, discoverSkills, cleanupTempDir } from '../repository-manager';
+import { cloneRepository, discoverSkills, cleanupTempDir, getLatestCommitHash } from '../repository-manager';
 import { installSkillForAgent, sanitizeName } from '../installer';
 import { addSkillToLock, getLastSelectedAgents, saveSelectedAgents } from '../skill-registry';
-import { computeContentHash } from '../skill-registry';
 import type { Skill, AgentType, InstallMode } from '../types';
 import { parseSource } from './source-parser';
 import { InstallFlow } from './install-flow';
@@ -127,12 +126,15 @@ export async function installSkill(skill: Skill | string, isUpdate = false): Pro
 
       // Save to lock file
       const sanitizedName = sanitizeName(skillName);
-      const contentHash = computeContentHash(skillToInstall.rawContent);
+      const gitCommitHash = await getLatestCommitHash(tempDir);
+      if (!gitCommitHash) {
+        throw new Error('Failed to get commit hash from repository');
+      }
       await addSkillToLock(sanitizedName, {
         source: typeof skill === 'object' && skill.repositoryUrl ? skill.repositoryUrl : sourceUrl,
         sourceType: 'github',
         sourceUrl: typeof skill === 'object' && skill.repositoryUrl ? skill.repositoryUrl : sourceUrl,
-        skillFolderHash: contentHash,
+        gitCommitHash,
       });
 
       // Save selected agents

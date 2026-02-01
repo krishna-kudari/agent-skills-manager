@@ -88,6 +88,37 @@ export async function cleanupTempDir(dir: string): Promise<void> {
   await rm(dir, { recursive: true, force: true });
 }
 
+/**
+ * Get the latest commit hash from a repository
+ */
+export async function getLatestCommitHash(repoPath: string, ref: string = 'HEAD'): Promise<string | null> {
+  try {
+    const git = simpleGit(repoPath);
+    const log = await git.log({ from: ref, maxCount: 1 });
+    return log.latest?.hash || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get the latest commit hash from a remote repository URL
+ */
+export async function getRemoteCommitHash(url: string, ref?: string): Promise<string | null> {
+  let tempDir: string | null = null;
+
+  try {
+    tempDir = await cloneRepository(url, ref);
+    return await getLatestCommitHash(tempDir);
+  } catch {
+    return null;
+  } finally {
+    if (tempDir) {
+      await cleanupTempDir(tempDir).catch(() => {});
+    }
+  }
+}
+
 async function hasSkillMd(dir: string): Promise<boolean> {
   try {
     const skillPath = join(dir, 'SKILL.md');

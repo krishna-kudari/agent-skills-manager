@@ -1,11 +1,7 @@
-import { readFile } from 'fs/promises';
-import { join } from 'path';
-import { computeContentHash } from './skill-registry';
 import { getCanonicalPath } from './installer';
 import type { SkillInstallState } from './types';
-import { discoverSkills } from './repository-manager';
-import { cloneRepository, cleanupTempDir } from './repository-manager';
-import type { DiscoveredSkill } from './repository-manager';
+import { getRemoteCommitHash } from './repository-manager';
+import { getSkillLockEntry } from './skill-registry';
 
 export interface UpdateStatus {
   skillName: string;
@@ -17,56 +13,35 @@ export interface UpdateStatus {
 }
 
 /**
- * Compute content hash for an installed skill
+ * Get the installed Git commit hash for a skill from the lock file
  */
-export async function computeInstalledSkillHash(
-  skillName: string,
-  options: { global?: boolean; cwd?: string }
+export async function getInstalledCommitHash(
+  skillName: string
 ): Promise<string | null> {
   try {
-    const canonicalPath = getCanonicalPath(skillName, options);
-    const skillMdPath = join(canonicalPath, 'SKILL.md');
-    const content = await readFile(skillMdPath, 'utf-8');
-    return computeContentHash(content);
+    const lockEntry = await getSkillLockEntry(skillName);
+    return lockEntry?.gitCommitHash || null;
   } catch {
     return null;
   }
 }
 
 /**
- * Compute content hash for a remote skill
+ * Get the latest Git commit hash from a remote repository
  */
-export async function computeRemoteSkillHash(
+export async function getRemoteCommitHashForSkill(
   sourceUrl: string,
   skillPath?: string
 ): Promise<string | null> {
-  let tempDir: string | null = null;
-
   try {
-    // Clone repository
-    tempDir = await cloneRepository(sourceUrl);
-    
-    // Discover skills
-    const skills = await discoverSkills(tempDir, skillPath);
-    
-    if (skills.length === 0) {
-      return null;
-    }
-
-    // Use first skill's content hash
-    const skill = skills[0];
-    return computeContentHash(skill.rawContent);
+    return await getRemoteCommitHash(sourceUrl);
   } catch {
     return null;
-  } finally {
-    if (tempDir) {
-      await cleanupTempDir(tempDir).catch(() => {});
-    }
   }
 }
 
 /**
- * Check if a skill has updates available
+ * Check if a skill has updates available using Git commit hashes
  */
 export async function checkForUpdates(
   skillName: string,
@@ -74,27 +49,27 @@ export async function checkForUpdates(
   skillPath?: string,
   options?: { global?: boolean; cwd?: string }
 ): Promise<UpdateStatus> {
-  const localHash = await computeInstalledSkillHash(skillName, options || {});
-  const remoteHash = await computeRemoteSkillHash(sourceUrl, skillPath);
+  const localCommitHash = await getInstalledCommitHash(skillName);
+  const remoteCommitHash = await getRemoteCommitHashForSkill(sourceUrl, skillPath);
 
-  if (!localHash || !remoteHash) {
+  if (!localCommitHash || !remoteCommitHash) {
     return {
       skillName,
       hasUpdate: false,
       updateType: 'none',
-      localHash: localHash || '',
-      remoteHash: remoteHash || '',
+      localHash: localCommitHash || '',
+      remoteHash: remoteCommitHash || '',
     };
   }
 
-  const hasUpdate = localHash !== remoteHash;
+  const hasUpdate = localCommitHash !== remoteCommitHash;
 
   return {
     skillName,
     hasUpdate,
-    updateType: hasUpdate ? 'content' : 'none',
-    localHash,
-    remoteHash,
+    updateType: hasUpdate ? 'git' : 'none',
+    localHash: localCommitHash,
+    remoteHash: remoteCommitHash,
   };
 }
 
@@ -107,30 +82,46 @@ export async function getSkillInstallState(
   skillPath?: string,
   options?: { global?: boolean; cwd?: string }
 ): Promise<SkillInstallState> {
-  const localHash = await computeInstalledSkillHash(skillName, options || {});
+  const localCommitHash = await getInstalledCommitHash(skillName);
   
-  if (!localHash) {
+  // If no local commit hash is stored, we can't determine update status
+  // Check if skill is actually installed by looking at the file system
+  if (!localCommitHash) {
+    // For now, return 'installed' if we can't determine update status
+    // The caller will populate installedAgents from the installed skills list
     return {
-      status: 'not_installed',
+      status: 'installed',
       installedAgents: [],
     };
   }
 
-  const remoteHash = await computeRemoteSkillHash(sourceUrl, skillPath);
+  const remoteCommitHash = await getRemoteCommitHashForSkill(sourceUrl, skillPath);
   
-  if (!remoteHash || localHash === remoteHash) {
+  // If we can't get remote hash, assume installed (no update check possible)
+  if (!remoteCommitHash) {
     return {
       status: 'installed',
       installedAgents: [], // Will be populated by caller
-      localHash,
-      remoteHash: remoteHash || undefined,
+      localHash: localCommitHash,
+      remoteHash: undefined,
     };
   }
 
+  // Compare commit hashes - if they match, skill is up to date
+  if (localCommitHash === remoteCommitHash) {
+    return {
+      status: 'installed',
+      installedAgents: [], // Will be populated by caller
+      localHash: localCommitHash,
+      remoteHash: remoteCommitHash,
+    };
+  }
+
+  // Commit hashes differ - update available
   return {
     status: 'update_available',
     installedAgents: [], // Will be populated by caller
-    localHash,
-    remoteHash,
+    localHash: localCommitHash,
+    remoteHash: remoteCommitHash,
   };
 }

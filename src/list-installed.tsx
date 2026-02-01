@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { List, ActionPanel, Action, Icon, showToast, Toast, confirmAlert, Alert } from '@raycast/api';
-import { listInstalledSkills, removeSkillFromLock, addSkillToLock, computeContentHash } from './skill-registry';
+import { listInstalledSkills, removeSkillFromLock, addSkillToLock } from './skill-registry';
 import { detectInstalledAgents, getAgentConfig } from './agents';
 import { rm, lstat } from 'fs/promises';
 import { join } from 'path';
 import { sanitizeName, installSkillForAgent } from './installer';
 import { checkForUpdates } from './update-detector';
-import { cloneRepository, discoverSkills, cleanupTempDir } from './repository-manager';
+import { cloneRepository, discoverSkills, cleanupTempDir, getLatestCommitHash } from './repository-manager';
 import type { InstalledSkill, AgentType, InstallMode } from './types';
 import { homedir } from 'os';
 
@@ -309,12 +309,15 @@ export default function ListInstalled() {
 
       // Update lock file
       const sanitizedName = sanitizeName(skill.name);
-      const contentHash = computeContentHash(skillToInstall.rawContent);
+      const gitCommitHash = await getLatestCommitHash(tempDir);
+      if (!gitCommitHash) {
+        throw new Error('Failed to get commit hash from repository');
+      }
       await addSkillToLock(sanitizedName, {
         source: skill.sourceUrl,
         sourceType: 'github',
         sourceUrl: skill.sourceUrl,
-        skillFolderHash: contentHash,
+        gitCommitHash,
       });
 
       showToast({

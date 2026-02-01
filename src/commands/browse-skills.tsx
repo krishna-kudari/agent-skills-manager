@@ -4,6 +4,7 @@ import { searchSkills, fetchPopularSkills } from '../skills-api';
 import { listInstalledSkills } from '../skill-registry';
 import { installSkill } from './install-skill';
 import { InstallFlow } from './install-flow';
+import { getSkillInstallState } from '../update-detector';
 import type { Skill, AgentType } from '../types';
 
 export default function BrowseSkills() {
@@ -66,15 +67,40 @@ export default function BrowseSkills() {
 
     for (const skill of skillsToCheck) {
       const installed = installedMap.get(skill.name);
-      if (installed) {
-        states.set(skill.name, {
-          status: 'installed',
-          agents: installed.agents,
-        });
-      } else {
+      
+      if (!installed) {
         states.set(skill.name, {
           status: 'not_installed',
           agents: [],
+        });
+        continue;
+      }
+
+      // Check for updates if repository URL is available
+      if (skill.repositoryUrl) {
+        try {
+          const installState = await getSkillInstallState(
+            skill.name,
+            skill.repositoryUrl
+          );
+          states.set(skill.name, {
+            status: installState.status,
+            agents: installState.installedAgents.length > 0 
+              ? installState.installedAgents 
+              : installed.agents,
+          });
+        } catch (error) {
+          // Fallback to installed status if update check fails
+          states.set(skill.name, {
+            status: 'installed',
+            agents: installed.agents,
+          });
+        }
+      } else {
+        // No repository URL, just mark as installed
+        states.set(skill.name, {
+          status: 'installed',
+          agents: installed.agents,
         });
       }
     }

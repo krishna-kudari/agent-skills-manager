@@ -2,18 +2,22 @@
   "name": "agent-skills-manager",
   "title": "Agent Skills Manager",
   "version": "1.0.0",
-  "description": "Manage agent skills across multiple AI coding assistants",
+  "description": "Manage agent skills across multiple AI coding assistants (Cursor, Continue, Cline, and 40+ others)",
   "icon": "icon.png",
   "author": "krishnak",
   "license": "MIT",
-  "platforms": ["macOS"],
+  "platforms": ["macOS", "Windows"],
   "categories": ["Developer Tools", "Productivity"],
   "keywords": [
     "raycast",
     "agent-skills",
     "skills",
     "ai",
-    "coding-assistant"
+    "coding-assistant",
+    "cursor",
+    "continue",
+    "cline",
+    "github-copilot"
   ],
   "main": "dist/index.js",
   "scripts": {
